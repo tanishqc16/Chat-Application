@@ -16,28 +16,23 @@ function Chat({socket, username, roomcode}) {           //Passing props from App
             }
             await socket.emit("send_message", messageInfo)
             setMessagelist((list)=>[...list, messageInfo]);
+            console.log("messageInfo send", messageInfo);
             setMessage("");
         }
     }
 
-    useEffect(()=>{                                     // Listens every time when we receive another message
+    useEffect(()=>{   
         socket.on("messageRecieve", (data)=>{
-            console.log(data);
+            console.log("data", data);
             setMessagelist((list)=>[...list, data]);
+            console.log("messageInfo recienve", data);
         })
-        // return () => {
-        //     socket.on("messageRecieve", (data)=>{
-        //         console.log(data);
-        //         setMessagelist((list)=>[...list, data]);
-        //     })
-        // }
     }, [socket]);
 
     return (
     <div className='chat-window'>
         <div className="chat-header">
-
-            <p>Chat</p>
+            <p style={{color:'black'}}>Smart Dumbasses</p>
         </div>
         <div className="chat-body">
             <ScrollToBottom className='message-container'>

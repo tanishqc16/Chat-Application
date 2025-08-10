@@ -2,40 +2,62 @@ const http = require("http");
 const express = require("express");
 const app = express();
 const cors = require("cors");
-const {Server} = require("socket.io");              //import Server class which is already present in socketio.
+const path = require('path');
+const { Server } = require("socket.io");
+const cluster = require("cluster");
+const os = require("os");
+const redisAdapter = require("socket.io-redis");
 
+app.use(express.static(path.join(__dirname + "/public")));
 app.use(cors());
 
-const server = http.createServer(app);
+if (cluster.isMaster) {
+    const cpuCount = os.cpus().length;
+    console.log("cpuCount", cpuCount);
+    console.log(`Master ${process.pid} is running`);
 
-const io = new Server(server, {                     // create Instance of Server class imported form socketio.
-    cors:{                                          // To resolve cors issue, just tell cors which server and methods to accept
-        origin:"http://localhost:3000",
-        method : ["GET", "POST"],
-    },
-}); 
+    // Fork workers equal to CPU cores
+    for (let i = 0; i < cpuCount; i++) {
+        cluster.fork();
+    }
 
-io.on("connection", (socket)=>{                     // Listen event when user is connected and disconnected form Server
-    console.log(`User Connected : ${socket.id}`);
-                                      
-    socket.on("join_room", (data, name) => {        // This function is to join room when someone enters roomcode and username.
-        socket.join(data);                          // join() is function in socket.io
-        console.log(`${name} joined room: ${data}`);
+    cluster.on("exit", (worker, code, signal) => {
+        // console.log(`Worker ${worker.process.pid} died, starting a new worker`);
+        cluster.fork();
+    });
+} else {
+    const server = http.createServer(app);
+
+    const io = new Server(server, {
+        cors: {
+            origin: "http://localhost:3000",
+            methods: ["GET", "POST"],
+        },
     });
 
-    socket.on("send_message", (data) =>{            // data in each socket function is coming from user(fronend) 
-        console.log(data)
-        socket.to(data.room).emit("messageRecieve", data)       // When someone types the msg this function transmits
-                                                                //  that message to the users in same room.
+    // Use socket.io-redis adapter with Redis server on localhost:6379
+    io.adapter(redisAdapter({ host: "localhost", port: 6379 }));
+
+    io.on("connection", (socket) => {
+        console.log(`User Connected : ${socket.id} on worker ${process.pid}`);
+
+        socket.on("join_room", (data, name) => {
+            socket.join(data);
+            console.log(`${name} joined room: ${data}`);
+        });
+
+        socket.on("send_message", (data) => {
+            console.log("send_message ", data);
+            io.in(data.room).emit("messageRecieve", data);
+            console.log("messageRecieve event emitted to room:", data.room);
+        });
+
+        socket.on("disconnect", () => {
+            console.log("User Disconnected", socket.id);
+        });
     });
 
-    socket.on("disconnect", ()=>{
-        console.log("User Disconnected", socket.id);
+    server.listen(3001, () => {
+        // console.log(`Server Running on port 3001 by worker ${process.pid}`);
     });
-});
-
-
-server.listen(3001, ()=>{
-    console.log("Server Running......")
-})
-
+}

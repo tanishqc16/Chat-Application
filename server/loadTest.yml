@@ -1,0 +1,26 @@
+config:
+  target: "http://localhost:3001"
+  phases:
+    - duration: 30      # Test duration in seconds
+      arrivalCount: 100000 # Create 300 users at start (fixed concurrency)
+      name: "Fixed 3000 Users"
+  engines:
+    socketio: {}
+  socketio:
+    transports: ["websocket"]
+
+scenarios:
+  - name: "Socket.IO Chat Load Test"
+    engine: "socketio"
+    flow:
+      - emit:
+          - "join_room"
+          - "room123"
+          - "LoadTester"
+      - think: 1
+      - loop:
+          - emit:
+              - "send_message"
+              - { room: "room123", author: "LoadTester", message: "Hello from Artillery!" }
+          - think: 2
+        count: 5

@@ -9,14 +9,14 @@ function App() {
 
   const[username, setUsername] = useState("");       // Usestate for username
   const[roomcode, setRoomcode] = useState("");       // Usestate for joining room
-  const[showchat, setshowchat] = useState(false);       // Usestate to chat chat when user joins room
+  const[showchat, setshowchat] = useState(false);       // Usestate to chat when user joins room
 
 
   const joinRoom=()=>{
     if (username !== "" && roomcode !== "") {
       socket.emit("join_room", roomcode, username);
       setshowchat(true);
-    }
+        } 
   };
 
   return (
@@ -33,6 +33,7 @@ function App() {
       />
       <input
         type="text"
+        placeholder="Room code"
         onChange={(event) => {
           setRoomcode(event.target.value);
         }}
